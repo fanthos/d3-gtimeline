@@ -35,16 +35,11 @@ export default function () {
     var names = f(0);
     var starts = f(1);
     var ends = f(2);
+    var knownColor;
 
     function chart(selection) {
         // Known colors for static data,
         // should add for very common state string manually.
-        const colorKnown = {
-            on: d3.hcl(0, 95, 75),
-            active: d3.hcl(15, 90, 75),
-            off: d3.hcl(120, 90, 75),
-            deactive: d3.hcl(150, 90, 75)
-        };
         // Distribute the color data like complete binary tree
         function getColorRange(x) {
             if (x === 0) return 0;
@@ -73,9 +68,12 @@ export default function () {
         var colorIndex = 0;
         // Custom color assign
         function getColor(name) {
-            var ret = colorKnown[name];
-            if (ret === undefined) {
-                ret = colorDict.get(name);
+            var ret;
+            if (knownColor) {
+                ret = knownColor[name];
+                if (ret === undefined) {
+                    ret = colorDict.get(name);
+                }
             }
             if (ret === undefined) {
                 var h1 = getColorRange(colorIndex);
@@ -201,6 +199,7 @@ export default function () {
     chart.padding  = function(_) { return arguments.length? (padding = _, chart): padding; };
     chart.reversed = function(_) { return arguments.length? (reversed = _, chart): reversed; };
     chart.duration = function(_) { return arguments.length? (duration = _, chart): duration; };
+    chart.knownColor = function(_) { return arguments.length? (knownColor = _, chart): knownColor; };
 
     return chart;
     
