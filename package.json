@@ -1,6 +1,6 @@
 {
-  "name": "d3-gtimeline",
-  "version": "0.0.3",
+  "name": "d3-gtimeline-ha",
+  "version": "0.1.0",
   "description": "Google-like timeline chart",
   "keywords": [
     "d3",
