@@ -1,18 +1,16 @@
-import {timelineAxisLeft, timelineAxisRight} from "./timelineaxis";
-import tooltip from "./tooltip";
-import {durationFormat, compose, f} from "./utils";
+import { timelineAxisLeft, timelineAxisRight } from './timelineaxis';
+import tooltip from './tooltip';
+import { durationFormat, f } from './utils';
 
-var google_colors = [ 
-	"#4285f4", "#db4437", "#f4b400", "#0f9d58", "#ab47bc", "#5e97f5", "#e06055", 
-	"#f5bf26", "#33ab71", "#b762c6", "#00acc1", "#ff855f", "#9e9d24", "#26b8ca", "#ff7043"];
-
-function getFontSize(element){
-    var style = window.getComputedStyle(element, null).getPropertyValue('font-size');
-    return parseFloat(style); 
+function getFontSize(element) {
+    var style = window
+        .getComputedStyle(element, null)
+        .getPropertyValue('font-size');
+    return parseFloat(style);
 }
 
 function luma_BT709(c) {
-	return (c.r*0.299 + c.g*0.587 + c.b*0.114);
+    return c.r * 0.299 + c.g * 0.587 + c.b * 0.114;
 }
 
 function isBright(color) {
@@ -20,129 +18,178 @@ function isBright(color) {
 }
 
 function textColor(value) {
-    return isBright(d3.color(value))? 'black': 'white';
+    return isBright(d3.color(value)) ? 'black' : 'white';
 }
 
 function translate(x, y) {
-    return "translate(" + x + ',' + y + ')';
+    return 'translate(' + x + ',' + y + ')';
 }
 
-export default function() {
-    var colors = google_colors,
-        padding = 5,
-        reversed = false,
-        today = false,
-        dates,
-        const_width,
-        duration = 0,
-        labels = f(0),
-        names  = f(1),
-        starts = f(2),
-        ends   = f(3);
-
-    function trim_text(d, i) {
-        var task = d3.select(this.parentNode),
-            text = task.select('text'),
-            rect = task.select('rect'),
-            string = names(d),
-            text_width = text.node().getComputedTextLength();  
-
-        // this is overkill if duration is 0
-        d3.active(this)
-            .tween('text', function () {
-                return function(t) {
-                    var width = rect.attr('width') - 2*padding,
-                        ratio = width / text_width;
-                    text.text(ratio < 1? string.substring(0, Math.floor(string.length * ratio)): string);
-                }
-            });
-    }
+export default function () {
+    var padding = 5;
+    var reversed = false;
+    var today = false;
+    var dates;
+    var constWidth;
+    var duration = 0;
+    var names = f(0);
+    var starts = f(1);
+    var ends = f(2);
 
     function chart(selection) {
-        var 
-            data = selection.datum(),
-            rows = d3.map(data, labels).keys(),
-            tip = new tooltip(tooltip_html),
-            cScale = d3.scaleOrdinal(colors);
+        // Known colors for static data,
+        // should add for very common state string manually.
+        const colorKnown = {
+            on: d3.hcl(0, 95, 75),
+            active: d3.hcl(15, 90, 75),
+            off: d3.hcl(120, 90, 75),
+            deactive: d3.hcl(150, 90, 75)
+        };
+        // Distribute the color data like complete binary tree
+        function getColorRange(x) {
+            if (x === 0) return 0;
+            if (x === 1) return 0.5;
+            var y = Math.floor(Math.log2(x));
+            var e = Math.pow(2, y);
+            var n = x - e;
+            var a;
+            if (y % 2 === 1) {
+                if (n % 2 === 0) {
+                    a = n + 1;
+                } else {
+                    a = n + e;
+                }
+            } else {
+                // eslint-disable-next-line no-lonely-if
+                if (n % 2 === 0) {
+                    a = e - n - 1;
+                } else {
+                    a = e + e - n;
+                }
+            }
+            return a / (e + e);
+        }
+        var colorDict = new Map();
+        var colorIndex = 0;
+        // Custom color assign
+        function getColor(name) {
+            var ret = colorKnown[name];
+            if (ret === undefined) {
+                ret = colorDict.get(name);
+            }
+            if (ret === undefined) {
+                var h1 = getColorRange(colorIndex);
+                ret = d3.hcl(h1 * 360, 75, 65);
+                colorIndex++;
+                colorDict.set(name, ret);
+            }
+            return ret;
+        }
+        var dataTable = selection.datum();
+        var rows = d3.map(dataTable, x => x.label).keys();
 
-        dates = dates || [d3.min(data, starts), d3.max(data, ends)];
+        dates = dates || [
+            d3.min(dataTable, d => d.start),
+            d3.max(dataTable, d => d.end)
+        ];
 
-        selection.each(function(data){
-            var width = const_width || this.getBoundingClientRect().width,
-                height = rows.length * (getFontSize(this) + 4*padding),
-                yScale = d3.scaleBand().domain(rows).range([0, height]), //.padding(0.1),
-                xScale = d3.scaleTime().domain(dates),
-                yAxis = (reversed? timelineAxisRight: timelineAxisLeft)(yScale).width(width),
-                svg = d3.select(this).append('svg').attr('class', 'timeline');
+        selection.each(function (data) {
+            var width = constWidth || this.getBoundingClientRect().width;
+            var height = rows.length * (getFontSize(this) + 4 * padding);
+            var yScale = d3.scaleBand().domain(rows).range([0, height]);
+            var xScale = d3.scaleTime().domain(dates);
+            var yAxis;
+            if (data.length === 1) {
+                yAxis = timelineAxisNone(yScale).width(width);
+            } else {
+                yAxis = (reversed ? timelineAxisRight : timelineAxisLeft)(yScale)
+                    .width(width);
+            }
+            var thisNode = d3.select(this);
+            thisNode.style('position', 'relative');
+            d3.thisNode.select('div').remove();
+            d3.thisNode.select('svg').remove();
+            var svg = d3.thisNode.append('svg').attr('class', 'timeline');
+            var tip = new tooltip(this, tooltipHtml);
 
             svg.attr('width', width);
             svg.attr('height', height + 20); // margin.bottom
-            
+
             var g = svg.append('g');
+            //g.selectAll('g.task').remove();
 
             var yGroup = g.append('g')
                 .attr('class', 'y axis')
                 .call(yAxis);
 
             var range = yAxis.range();
-            xScale.range([range[0]+padding, range[1]-padding]).clamp(true);
+            xScale.range([range[0], range[1]]).clamp(true);
             var xAxis = d3.axisBottom(xScale);
             var xGroup = g.append('g')
                 .attr('class', 'x axis')
-                .attr("transform", translate(0, height))
-                  .call(xAxis);
+                .attr('transform', translate(0, height))
+                .call(xAxis);
 
             xGroup.select('.domain').remove();
-            xGroup.selectAll('.tick line').attr('stroke', '#AAA');
+            xGroup.selectAll('.tick line')
+                .attr('stroke', '#AAA')
+                .attr('stroke-width', 0.75)
+                .attr('y1', -height);
 
-            var ticks = xScale.ticks().map(xScale);        
+            var ticks = xScale.ticks().map(xScale);
             yGroup.call(yAxis.draw_ticks, ticks);
 
-            var tasks = g.selectAll('g.task').data(data);
+            var padding2 = padding + padding;
+            var yScaleList = data.map(x => yScale(x.label) + padding);
+            var yScaleBandwidth = yScale.bandwidth() - padding2;
 
-            tasks.exit().remove();
-
-            var tasks_enter = tasks.enter()
+            g.append('g').selectAll('g').data(data).enter()
                 .append('g')
-                .classed('task', true);
+                .attr('transform', d => 'translate(0, ' + yScale(d.label) + ')')
+                .classed('task', true)
+                .each((data1, i1, node1) => {
+                    d3.select(node1[i1])
+                        .selectAll('rect')
+                        .data(d => d.data)
+                        .enter()
+                        .each((data2, i2, n) => {
+                            var g2 = d3.select(n[i2]);
+                            var bgColor = getColor(names(data2));
+                            var xStart = xScale(starts(data2));
+                            var xWidth = xScale(ends(data2)) - xStart;
+                            g2.append('rect')
+                                .attr('y', 5)
+                                .attr('x', xStart)
+                                .attr('width', xWidth + 0.5)
+                                .attr('height', yScaleBandwidth)
+                                .attr('data-y', yScaleList[i1] + yScaleBandwidth)
+                                .on('mouseover', tip.show)
+                                .on('mouseout', tip.hide)
+                                .attr('fill', bgColor);
 
-            tasks_enter
-                .append('rect')
-                .attr('y', padding)
-                .attr('height', yScale.bandwidth() - 2*padding)
-                .on('mouseover', tip.show)
-                .on('mouseout', tip.hide)
-                .style('fill', names.wrap(cScale));
-
-            tasks_enter
-                .append('text')
-                .attr("text-anchor", "start")
-                .attr('fill', d => textColor(cScale(names(d))))
-                .attr('pointer-events', 'none')
-                .attr('dx', padding)
-                .attr('y', yScale.bandwidth()/2)
-                .attr('dy', "0.32em")
-                .text(names);
-
-            tasks = tasks.merge(tasks_enter);
-
-            tasks
-                .attr("transform", d => translate(range[0], yScale(labels(d))))
-                .selectAll('rect')
-                    .attr('width', 0);
-
-            tasks
-                .transition().duration(duration)
-                .attr("transform", d => translate(xScale(starts(d)), yScale(labels(d))))
-                .selectAll('rect')
-                    .attr('width', d => xScale(ends(d)) - xScale(starts(d)))
-                .on('start', trim_text);
-
-            if(today) 
+                            // Dont fill text if no enough space
+                            if (xWidth > padding2) {
+                                // Hide text for small node
+                                var str1 = names(data2);
+                                var t = g2.append('text')
+                                    .attr('x', xStart)
+                                    .attr('y', 5)
+                                    .attr('dx', padding)
+                                    .attr('dy', yScaleBandwidth / 2 + padding)
+                                    .attr('text-anchor', 'start')
+                                    .attr('fill', 'black')
+                                    .attr('pointer-events', 'none')
+                                    .text(str1);
+                                if (xWidth - padding < t.node().getComputedTextLength()) {
+                                    t.remove();
+                                }
+                            }
+                        });
+                });
+            if (today)
                 selection.append('path')
                     .attr('stroke', 'red')
-                    .attr('d','M'+xScale(new Date)+',0.5V'+height);
-            
+                    .attr('d', 'M' + xScale(new Date) + ',0.5V' + height);
         });
     }
 
@@ -156,14 +203,22 @@ export default function() {
     chart.duration = function(_) { return arguments.length? (duration = _, chart): duration; };
 
     return chart;
-
-    function tooltip_html(d,i) {
-        //var format = (d)=>d3.timeFormat("%Y-%m-%d")(d3.isoParse(d));
-        var format = d3.isoParse.wrap(d3.timeFormat("%Y-%m-%d"));
-//        var format = compose(d3.isoParse, d3.timeFormat("%Y-%m-%d"));
-		return  '<b>'+ names(d) + '</b>' + 
-                '<hr style="margin: 2px 0 2px 0">' +
-                format(starts(d)) + ' - ' + format(ends(d)) + '<br>' +
-                durationFormat(starts(d), ends(d));
+    
+    function tooltipHtml(d) {
+        // Format date for human
+        var seconds = (ends(d) - starts(d)) / 1000;
+        var dateFormat;
+        if (seconds < 3600 * 18) {
+            dateFormat = '%H:%M:%S';
+        } else if (seconds < 86400 * 7) {
+            dateFormat = '%m-%d %H:%M';
+        } else {
+            dateFormat = '%Y-%m-%d';
+        }
+        var format = x => d3.timeFormat(dateFormat)(d3.isoParse(x));
+        return '<b>' + names(d) + '</b>' +
+            '<hr style="margin: 2px 0 2px 0">' +
+            format(starts(d)) + ' - ' + format(ends(d)) + '<br>' +
+            durationFormat(seconds);
     }
 }

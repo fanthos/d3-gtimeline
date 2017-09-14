@@ -4,83 +4,70 @@ function identity(x) {
     return x;
 }
 
-var right = 1,
-    left = 2;
+var axisRight = 1,
+    axisLeft = 2,
+    axisNone = 0;
 
 function timelineAxis(orient, scale) {
-    var colors = ['#FFF','#EEE'],
-        padding = 5,
-        range,
-        line_color = '#AAA',
-        trim = 40,
-        width = 100;
-
-    function max_text_width(selection) {
+    var colors = ['#FFF', '#EEE'];
+    var padding = 5;
+    var range;
+    var lineColor = '#AAA';
+    var trim = 40;
+    var width = 100;
+    function maxTextWidth(selection) {
         return d3.max(selection.nodes().map(d => d.getComputedTextLength()));
     }
-
-    function trim_long_string(value) {
-        return function(d){
-            return d.length > value? d.slice(0, value-1)+'\u2026': d
-        }
+    function trimLongString(value) {
+        return function (d) {
+            return d.length > value ? d.slice(0, value - 1) + '\u2026' : d;
+        };
     }
-
     function axis(selection) {
-        var domain = scale.domain(),
-            tip = tooltip(identity),
-            colorscale = d3.scaleOrdinal(colors),
-            invertscale = d3.scaleOrdinal(colors.reverse()),
-            labels = trim_long_string(trim),
-            row = selection.selectAll('.row').data(domain, scale).order(),
-            rowEnter = row.enter().append('g').attr('class', 'row'),
-            rowExit = row.exit(),
-            texts = row.select('text');
-
+        var domain = scale.domain();
+        var colorscale = d3.scaleOrdinal(colors);
+        var labels = trimLongString(trim);
+        var row = selection.selectAll('.row').data(domain, scale).order();
+        var rowEnter = row.enter().append('g').attr('class', 'row');
+        var rowExit = row.exit();
+        var offset;
         row = row.merge(rowEnter)
-            .attr("transform", (d)=>"translate(0," + scale(d) + ")");
-
+            .attr('transform', d => 'translate(0,' + scale(d) + ')');
         rowExit.remove();
-
         rowEnter.append('rect')
             .attr('y', 0.5)
             .attr('width', width)
             .attr('height', scale.bandwidth())
-            .attr('stroke', line_color)
+            .attr('stroke', lineColor)
             .attr('stroke-width', 0.75)
             .attr('fill', colorscale);  // should be re-done if domain changed?
-
-        rowEnter.append('path')
-            .attr('stroke', invertscale);
-
-        texts = texts.merge(rowEnter.append('text')
-            .attr('y', scale.bandwidth()/2)
-            .attr('dy', "0.32em")
-            .on('mouseover', function(d) {
-                if(d3.select(this).text() != d)
-                    tip.show(d);
-            })
-            .on('mouseout', tip.hide))
-        .text(labels);
-
-        var offset = max_text_width(texts) + 2*padding;
-        offset = orient === right ? width - offset: offset;
-
-        range = orient === right ? [0, offset]: [offset, width];
-
-        texts
-            .attr("text-anchor", orient === right ? "start" : "end")
-            .attr('dx', orient === right ? padding: -padding)
-            .attr('x', offset);
-
+        if (orient !== axisNone) {
+            var texts = row.select('text');
+            texts = texts.merge(rowEnter.append('text')
+                .attr('y', scale.bandwidth() / 2)
+                .attr('dy', '0.32em')
+            ).text(labels);
+            var textWidthLimit = width * 0.2;
+            offset = maxTextWidth(texts) + padding + padding;
+            offset = Math.min(textWidthLimit, offset);
+            offset = orient === axisRight ? width - offset : offset;
+            range = orient === axisRight ? [0, offset] : [offset, width];
+            texts
+                .attr('text-anchor', orient === axisRight ? 'start' : 'end')
+                .attr('dx', orient === axisRight ? padding : -padding)
+                .attr('x', offset);
+        } else {
+            range = [0, width];
+        }
         selection.append('path')
-            .attr('stroke',  line_color)
-            .attr('d','M'+(offset+.5)+',0.5V'+scale.range()[1]);
+            .attr('stroke', lineColor)
+            .attr('d', 'M' + (offset + 0.5) + ',0.5V' + scale.range()[1]);
     }
-
-    axis.draw_ticks = function(selection, ticks) { 
+    axis.draw_ticks = function (selection, ticks) {
         selection.selectAll('.row').select('path')
-            .attr('d', ticks.map((t)=> 'M'+t+','+1+'v'+(scale.bandwidth()-1)).join(''));
-    }
+            .attr('d', ticks.map(
+                t => 'M' + t + ',' + 1 + 'v' + (scale.bandwidth() - 1)).join(''));
+    };
 
     axis.scale   = function(_) { return arguments.length? (scale   = _, axis): scale };
     axis.width   = function(_) { return arguments.length? (width   = _, axis): width };
@@ -93,9 +80,13 @@ function timelineAxis(orient, scale) {
 }
 
 export function timelineAxisLeft(scale) {
-  return timelineAxis(left, scale);
+  return timelineAxis(axisLeft, scale);
 }
 
 export function timelineAxisRight(scale) {
-  return timelineAxis(right, scale);
+  return timelineAxis(axisRight, scale);
+}
+
+export function timelineAxisNone(scale) {
+  return timelineAxis(axisNone, scale);
 }

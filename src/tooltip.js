@@ -10,32 +10,50 @@ var css = 'div.tooltip {\
         pointer-events: none;\
       }';
 
-export default function (html_func) {
-
-    d3.select('head')
-        .selectAll('#tooltip').data([1]).enter()
-            .append('style')
-            .attr('id', 'tooltip')
-            .text(css);
-
-    var selection = d3.select("body").append("div")
-        .attr("class", "tooltip")
-        .style("opacity", 0);
-  
-    selection.show = function(){
-        selection.transition()
-            .duration(100)
-            .style("opacity", .95);
-        selection.html(html_func.apply(null, arguments))
-            .style("left", (d3.event.pageX) + "px")
-            .style("top", (d3.event.pageY - 28) + "px");
-    };
-
-    selection.hide = function(d){
-        selection.transition()
-            .duration(100)
-            .style("opacity", 0);
+export default function (domobj, htmlFunc) {
+    if (!domobj) {
+        domobj = 'body';
     }
 
+    var selection = d3.select(domobj).append('div')
+        .attr('class', 'tooltip')
+        .style('opacity', 0);
+
+        var htmlNode = selection.node();
+
+    selection.show = function (d, i, r) {
+        selection.interrupt();
+        var datay = r[0].attributes['data-y'].value;
+        var lastleft = htmlNode.style['left'];
+        var lastright = htmlNode.style['right'];
+        var x1 = parseInt(r[0].attributes.x.value);
+        var html1 = selection.html(htmlFunc.apply(null, [d, i, r]));
+        html1.style('left', 'unset')
+            .style('right', 'unset');
+        var width1 = htmlNode.clientWidth;
+        var parentWidth = htmlNode.parentNode.clientWidth;
+        html1
+            .style('left', lastleft)
+            .style('right', lastright);
+        var trans = selection.transition()
+            .duration(50);
+        trans.style('opacity', 0.95);
+        if (x1 + width1 + 10 > parentWidth) {
+            trans.style('right', '10px')
+                .style('left', 'unset')
+                .style('top', datay + 'px');
+        } else {
+            trans.style('left', x1 + 'px')
+                .style('right', 'unset')
+                .style('top', datay + 'px');
+        }
+    };
+
+    selection.hide = function () {
+        selection.transition()
+            .duration(50)
+            .style('opacity', 0);
+    };
+
     return selection;
-}
+};

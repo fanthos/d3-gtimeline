@@ -23,13 +23,12 @@
     "postpublish": "zip -j build/d3-gtimeline.zip -- LICENSE README.md build/d3-gtimeline.js build/d3-gtimeline.min.js"
   },
   "dependencies": {
-    "d3": "4",
-    "moment": "2.18.1"
+    "d3": "4"
   },
   "devDependencies": {
     "rollup": "0.41.6",
     "tape": "4.6.3",
-    "es6-arrow-function":"0.6.6",
+    "es6-arrow-function": "0.6.6",
     "uglify-js": "2.8.22"
   }
 }
