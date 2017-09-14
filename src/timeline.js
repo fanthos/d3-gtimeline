@@ -1,4 +1,4 @@
-import { timelineAxisLeft, timelineAxisRight } from './timelineaxis';
+import { timelineAxisLeft, timelineAxisRight, timelineAxisNone } from './timelineaxis';
 import tooltip from './tooltip';
 import { durationFormat, f } from './utils';
 
@@ -107,9 +107,9 @@ export default function () {
             }
             var thisNode = d3.select(this);
             thisNode.style('position', 'relative');
-            d3.thisNode.select('div').remove();
-            d3.thisNode.select('svg').remove();
-            var svg = d3.thisNode.append('svg').attr('class', 'timeline');
+            thisNode.select('div').remove();
+            thisNode.select('svg').remove();
+            var svg = thisNode.append('svg').attr('class', 'timeline');
             var tip = new tooltip(this, tooltipHtml);
 
             svg.attr('width', width);

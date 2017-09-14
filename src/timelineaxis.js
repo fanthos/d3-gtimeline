@@ -58,6 +58,7 @@ function timelineAxis(orient, scale) {
                 .attr('x', offset);
         } else {
             range = [0, width];
+            offset = 0;
         }
         selection.append('path')
             .attr('stroke', lineColor)
