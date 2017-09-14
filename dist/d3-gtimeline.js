@@ -1,6 +1,213 @@
-import { timelineAxisLeft, timelineAxisRight, timelineAxisNone } from './timelineaxis';
-import tooltip from './tooltip';
-import { durationFormat, f } from './utils';
+(function (global, factory) {
+	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
+	typeof define === 'function' && define.amd ? define(['exports'], factory) :
+	(factory((global.d3 = global.d3 || {})));
+}(this, (function (exports) { 'use strict';
+
+var tooltip = function (domobj, htmlFunc) {
+    if (!domobj) {
+        domobj = 'body';
+    }
+
+    var selection = d3.select(domobj).append('div')
+        .style('position', 'absolute')
+        .style('padding', '10px')
+        .style('background', '#fff')
+        .style('border', '1px solid #aaa')
+        .style('border-radius', '2px')
+        .style('z-index', '32767')
+        .style('pointer-events', 'none')
+        .style('opacity', 0);
+
+    var htmlNode = selection.node();
+
+    selection.show = function (d, i, r) {
+        // selection.interrupt();
+        var datay = r[0].attributes['data-y'].value;
+        // var lastleft = htmlNode.style['left'];
+        // var lastright = htmlNode.style['right'];
+        var x1 = parseInt(r[0].attributes.x.value);
+        var html1 = selection.html(htmlFunc.apply(null, [d, i, r]));
+        html1.style('left', 'unset')
+            .style('right', 'unset');
+        var width1 = htmlNode.clientWidth;
+        var parentWidth = htmlNode.parentNode.clientWidth;
+        // html1
+        //     .style('left', lastleft)
+        //     .style('right', lastright);
+        if (x1 + width1 + 10 > parentWidth) {
+            selection.style('right', '10px')
+                .style('left', 'unset')
+                .style('top', datay + 'px');
+        } else {
+            selection.style('left', x1 + 'px')
+                .style('right', 'unset')
+                .style('top', datay + 'px');
+        }
+        var trans = selection.transition()
+            .duration(100);
+        trans.style('opacity', 0.95);
+    };
+
+    selection.hide = function () {
+        selection.transition()
+            .duration(100)
+            .style('opacity', 0);
+    };
+
+    return selection;
+};
+
+var axisRight = 1;
+var axisLeft = 2;
+var axisNone = 0;
+
+function timelineAxis(orient, scale) {
+    var colors = ['#FFF', '#EEE'];
+    var padding = 5;
+    var range;
+    var lineColor = '#AAA';
+    var trim = 40;
+    var width = 100;
+    function maxTextWidth(selection) {
+        return d3.max(selection.nodes().map(d => d.getComputedTextLength()));
+    }
+    function trimLongString(value) {
+        return function (d) {
+            return d.length > value ? d.slice(0, value - 1) + '\u2026' : d;
+        };
+    }
+    function axis(selection) {
+        var domain = scale.domain();
+        var colorscale = d3.scaleOrdinal(colors);
+        var labels = trimLongString(trim);
+        var row = selection.selectAll('.row').data(domain, scale).order();
+        var rowEnter = row.enter().append('g').attr('class', 'row');
+        var rowExit = row.exit();
+        var offset;
+        row = row.merge(rowEnter)
+            .attr('transform', d => 'translate(0,' + scale(d) + ')');
+        rowExit.remove();
+        rowEnter.append('rect')
+            .attr('y', 0.5)
+            .attr('width', width)
+            .attr('height', scale.bandwidth())
+            .attr('stroke', lineColor)
+            .attr('stroke-width', 0.75)
+            .attr('fill', colorscale);  // should be re-done if domain changed?
+        if (orient !== axisNone) {
+            var texts = row.select('text');
+            texts = texts.merge(rowEnter.append('text')
+                .attr('y', scale.bandwidth() / 2)
+                .attr('dy', '0.32em')
+            ).text(labels);
+            var textWidthLimit = width * 0.2;
+            offset = maxTextWidth(texts) + padding + padding;
+            offset = Math.min(textWidthLimit, offset);
+            offset = orient === axisRight ? width - offset : offset;
+            range = orient === axisRight ? [0, offset] : [offset, width];
+            texts
+                .attr('text-anchor', orient === axisRight ? 'start' : 'end')
+                .attr('dx', orient === axisRight ? padding : -padding)
+                .attr('x', offset);
+        } else {
+            range = [0, width];
+            offset = 0;
+        }
+        selection.append('path')
+            .attr('stroke', lineColor)
+            .attr('d', 'M' + (offset + 0.5) + ',0.5V' + scale.range()[1]);
+    }
+    axis.draw_ticks = function (selection, ticks) {
+        selection.selectAll('.row').select('path')
+            .attr('d', ticks.map(
+                t => 'M' + t + ',' + 1 + 'v' + (scale.bandwidth() - 1)).join(''));
+    };
+
+    axis.scale   = function(_) { return arguments.length? (scale   = _, axis): scale };
+    axis.width   = function(_) { return arguments.length? (width   = _, axis): width };
+    axis.colors  = function(_) { return arguments.length? (colors  = _, axis): colors };
+    axis.padding = function(_) { return arguments.length? (padding = _, axis): padding };
+    axis.range   = function(_) { return arguments.length? (range   = _, axis): range };
+    axis.trim    = function(_) { return arguments.length? (trim    = _, axis): trim };
+
+    return axis;
+}
+
+function timelineAxisLeft(scale) {
+  return timelineAxis(axisLeft, scale);
+}
+
+function timelineAxisRight(scale) {
+  return timelineAxis(axisRight, scale);
+}
+
+function timelineAxisNone(scale) {
+  return timelineAxis(axisNone, scale);
+}
+
+//var moment = require("moment"),
+//    d3 = require("d3");
+    
+// import { createDuration } from 'moment/src/lib/duration/create';
+// import {humanize} from 'moment/src/lib/duration/humanize';
+
+// import {default as moment} from 'moment/moment';
+
+function durationFormat(seconds) {
+    function round10(x) {
+        return Math.round(x * 10) / 10;
+    }
+    var cutoff = 2;
+    var ret;
+    if (seconds < cutoff * 60) {
+        ret = seconds + 's';
+    } else if (seconds < cutoff * 60 * 60) {
+        ret = round10(seconds / 60) + ' min';
+    } else if (seconds < cutoff * 60 * 60 * 24) {
+        ret = round10(seconds / 3600) + ' hours';
+    } else if (seconds < cutoff * 3600 * 24 * 30) {
+        ret = round10(seconds / 86400) + ' day(s)';
+    } else if (seconds < cutoff * 3600 * 24 * 365) {
+        ret = round10(seconds / (86400 * 30)) + ' month(s)';
+    } else {
+        ret = round10(seconds / (86400 * 365)) + ' year(s)';
+    }
+    return ret;
+}
+
+//
+// Function composition
+//
+// Function.prototype.wrap = function(g) {
+//      var fn = this;
+//      return function() {
+//          return g.call(this, fn.apply(this, arguments));
+//      };
+// };
+
+// Function.prototype.compose = function(g) {
+//      var fn = this;
+//      return function() {
+//          return fn.call(this, g.apply(this, arguments));
+//      };
+// };
+
+// export function compose() {
+//     var funcs = [].slice.call(arguments, 1),
+//         first = arguments[0];
+//     return function () {
+//         return funcs.reduce(function(value, fn) {
+//             return fn.call(this, value);
+//         }, first.apply(this, arguments));
+//     }
+// }
+
+function f(value) {
+    return function(d) {
+        return value === undefined? d: d[value];
+    }
+}
 
 function getFontSize(element) {
     var style = window
@@ -9,23 +216,11 @@ function getFontSize(element) {
     return parseFloat(style);
 }
 
-function luma_BT709(c) {
-    return c.r * 0.299 + c.g * 0.587 + c.b * 0.114;
-}
-
-function isBright(color) {
-    return luma_BT709(color) > 165; // original is 186, but I prefer that value
-}
-
-function textColor(value) {
-    return isBright(d3.color(value)) ? 'black' : 'white';
-}
-
 function translate(x, y) {
     return 'translate(' + x + ',' + y + ')';
 }
 
-export default function () {
+var timeline = function () {
     var padding = 5;
     var reversed = false;
     var today = false;
@@ -220,4 +415,14 @@ export default function () {
             format(starts(d)) + ' - ' + format(ends(d)) + '<br>' +
             durationFormat(seconds);
     }
-}
+};
+
+exports.timeline = timeline;
+exports.tooltip = tooltip;
+exports.timelineAxisLeft = timelineAxisLeft;
+exports.timelineAxisRight = timelineAxisRight;
+exports.durationFormat = durationFormat;
+
+Object.defineProperty(exports, '__esModule', { value: true });
+
+})));
