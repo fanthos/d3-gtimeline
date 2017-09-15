@@ -9,7 +9,7 @@
     "d3-chart"
   ],
   "license": "BSD-3-Clause",
-  "main": "build/d3-gtimeline.js",
+  "main": "dist/d3-gtimeline.js",
   "jsnext:main": "index",
   "homepage": "https://github.com/jjagielka/d3-gtimeline",
   "repository": {
@@ -17,10 +17,10 @@
     "url": "https://github.com/jjagielka/d3-gtimeline.git"
   },
   "scripts": {
-    "pretest": "rm -rf build && mkdir build && rollup -f umd -n d3 -o build/d3-gtimeline.js -- index.js",
+    "pretest": "rm -rf dist && mkdir dist && rollup -f umd -n d3 -o dist/d3-gtimeline.js -- index.js",
     "test": "tape 'test/**/*-test.js'",
-    "prepublish": "npm run test && es6-arrow-function build/d3-gtimeline.js | uglifyjs -c -m -o build/d3-gtimeline.min.js",
-    "postpublish": "zip -j build/d3-gtimeline.zip -- LICENSE README.md build/d3-gtimeline.js build/d3-gtimeline.min.js"
+    "prepublish": "npm run test && es6-arrow-function dist/d3-gtimeline.js | uglifyjs -c -m -o dist/d3-gtimeline.min.js",
+    "postpublish": "zip -j dist/d3-gtimeline.zip -- LICENSE README.md dist/d3-gtimeline.js dist/d3-gtimeline.min.js"
   },
   "dependencies": {
     "d3": "4"

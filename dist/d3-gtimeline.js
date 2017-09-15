@@ -266,9 +266,9 @@ var timeline = function () {
             var ret;
             if (knownColor) {
                 ret = knownColor[name];
-                if (ret === undefined) {
-                    ret = colorDict.get(name);
-                }
+            }
+            if (ret === undefined) {
+                ret = colorDict.get(name);
             }
             if (ret === undefined) {
                 var h1 = getColorRange(colorIndex);
