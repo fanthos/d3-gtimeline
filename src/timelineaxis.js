@@ -16,6 +16,9 @@ function timelineAxis(orient, scale) {
     var trim = 40;
     var width = 100;
     function maxTextWidth(selection) {
+        if(selection.nodes().length === 0) {
+            return 0;
+        }
         return d3.max(selection.nodes().map(d => d.getComputedTextLength()));
     }
     function trimLongString(value) {
