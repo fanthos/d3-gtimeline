@@ -71,9 +71,9 @@ export default function () {
             var ret;
             if (knownColor) {
                 ret = knownColor[name];
-                if (ret === undefined) {
-                    ret = colorDict.get(name);
-                }
+            }
+            if (ret === undefined) {
+                ret = colorDict.get(name);
             }
             if (ret === undefined) {
                 var h1 = getColorRange(colorIndex);
@@ -87,8 +87,8 @@ export default function () {
         var rows = d3.map(dataTable, x => x.label).keys();
 
         dates = dates || [
-            d3.min(dataTable, d => d.start),
-            d3.max(dataTable, d => d.end)
+            d3.min(dataTable.map( (d) => d3.min(d.data, starts))),
+            d3.max(dataTable.map( (d) => d3.max(d.data, ends)))
         ];
 
         selection.each(function (data) {
